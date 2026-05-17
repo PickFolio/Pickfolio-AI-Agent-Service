@@ -1,0 +1,86 @@
+name: Deploy AI Agent Service
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: pickfolio-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          PORT="${ORACLE_PORT:-22}"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$ORACLE_SSH_KEY" > ~/.ssh/oracle.key
+          chmod 600 ~/.ssh/oracle.key
+          ssh-keyscan -p "$PORT" "$ORACLE_HOST" >> ~/.ssh/known_hosts
+          {
+            echo "Host oracle-vm"
+            echo "  HostName $ORACLE_HOST"
+            echo "  Port $PORT"
+            echo "  UserKnownHostsFile ~/.ssh/known_hosts"
+            echo "  IdentityFile ~/.ssh/oracle.key"
+            echo "  ServerAliveInterval 30"
+            echo "  ServerAliveCountMax 10"
+          } >> ~/.ssh/config
+
+      - name: Sync service to Oracle VM
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          ORACLE_APP_DIR: ${{ secrets.ORACLE_APP_DIR }}
+        run: |
+          set -euo pipefail
+          PORT="${ORACLE_PORT:-22}"
+          APP_DIR="${ORACLE_APP_DIR:-/home/ubuntu/pickfolio}"
+          REMOTE_DIR="${APP_DIR}/Backend/AI Agent Service"
+          ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "mkdir -p '${REMOTE_DIR}'"
+          rsync -az --delete \
+            -e "ssh -F $HOME/.ssh/config -l ${ORACLE_USER}" \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.venv/' \
+            --exclude '__pycache__/' \
+            --exclude '.idea/' \
+            ./ "oracle-vm:${REMOTE_DIR}/"
+
+      - name: Rebuild and restart ai-agent-service
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          ORACLE_APP_DIR: ${{ secrets.ORACLE_APP_DIR }}
+        run: |
+          set -euo pipefail
+          PORT="${ORACLE_PORT:-22}"
+          APP_DIR="${ORACLE_APP_DIR:-/home/ubuntu/pickfolio}"
+          ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "
+            set -e
+            cd '${APP_DIR}'
+            export COMPOSE_BAKE=false
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE='docker compose'
+            else
+              COMPOSE='docker-compose'
+            fi
+            \$COMPOSE build ai-agent-service
+            \$COMPOSE up -d --no-deps ai-agent-service
+            docker image prune -f
+          "
