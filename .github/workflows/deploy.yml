@@ -50,11 +50,6 @@ jobs:
           set -euo pipefail
           PORT="${ORACLE_PORT:-22}"
           APP_DIR="${ORACLE_APP_DIR:-/home/ubuntu/pickfolio}"
-          APP_DIR="${APP_DIR%/}"
-          APP_DIR="${APP_DIR%\"}"
-          APP_DIR="${APP_DIR#\"}"
-          APP_DIR="${APP_DIR%\'}"
-          APP_DIR="${APP_DIR#\'}"
           REMOTE_DIR="${APP_DIR}/Backend/AI Agent Service"
           REMOTE_DIR_ESCAPED="$(printf '%q' "$REMOTE_DIR")"
           ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "mkdir -p $REMOTE_DIR_ESCAPED"
@@ -77,14 +72,9 @@ jobs:
           set -euo pipefail
           PORT="${ORACLE_PORT:-22}"
           APP_DIR="${ORACLE_APP_DIR:-/home/ubuntu/pickfolio}"
-          APP_DIR="${APP_DIR%/}"
-          APP_DIR="${APP_DIR%\"}"
-          APP_DIR="${APP_DIR#\"}"
-          APP_DIR="${APP_DIR%\'}"
-          APP_DIR="${APP_DIR#\'}"
           ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "
             set -e
-            cd $(printf '%q' "$APP_DIR")
+            cd '${APP_DIR}'
             export COMPOSE_BAKE=false
             if docker compose version >/dev/null 2>&1; then
               COMPOSE='docker compose'
