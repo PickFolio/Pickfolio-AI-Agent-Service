@@ -50,6 +50,16 @@ jobs:
           set -euo pipefail
           PORT="${ORACLE_PORT:-22}"
           APP_DIR="${ORACLE_APP_DIR:-/home/ubuntu/pickfolio}"
+          APP_DIR_ESCAPED="$(printf '%q' "$APP_DIR")"
+          APP_DIR="$(
+            ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "
+              APP_DIR=$APP_DIR_ESCAPED
+              if [ ! -f \"\$APP_DIR/docker-compose.yml\" ] && [ -f \"\$APP_DIR/pickfolio/docker-compose.yml\" ]; then
+                APP_DIR=\"\$APP_DIR/pickfolio\"
+              fi
+              printf '%s' \"\$APP_DIR\"
+            "
+          )"
           REMOTE_DIR="${APP_DIR}/Backend/AI Agent Service"
           REMOTE_DIR_ESCAPED="$(printf '%q' "$REMOTE_DIR")"
           ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "mkdir -p $REMOTE_DIR_ESCAPED"
@@ -74,6 +84,16 @@ jobs:
           set -euo pipefail
           PORT="${ORACLE_PORT:-22}"
           APP_DIR="${ORACLE_APP_DIR:-/home/ubuntu/pickfolio}"
+          APP_DIR_ESCAPED="$(printf '%q' "$APP_DIR")"
+          APP_DIR="$(
+            ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "
+              APP_DIR=$APP_DIR_ESCAPED
+              if [ ! -f \"\$APP_DIR/docker-compose.yml\" ] && [ -f \"\$APP_DIR/pickfolio/docker-compose.yml\" ]; then
+                APP_DIR=\"\$APP_DIR/pickfolio\"
+              fi
+              printf '%s' \"\$APP_DIR\"
+            "
+          )"
           OPENROUTER_API_KEY_ESCAPED="$(printf '%q' "$OPENROUTER_API_KEY")"
           OPENROUTER_MODEL_ESCAPED="$(printf '%q' "$OPENROUTER_MODEL")"
           ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "
