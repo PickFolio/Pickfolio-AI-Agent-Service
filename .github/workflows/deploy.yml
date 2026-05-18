@@ -72,6 +72,29 @@ jobs:
             --exclude '.idea/' \
             ./ "oracle-vm:${REMOTE_DIR}/"
 
+      - name: Sync docker-compose to Oracle VM
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          ORACLE_APP_DIR: ${{ secrets.ORACLE_APP_DIR }}
+        run: |
+          set -euo pipefail
+          PORT="${ORACLE_PORT:-22}"
+          APP_DIR="${ORACLE_APP_DIR:-/home/ubuntu/pickfolio}"
+          APP_DIR_ESCAPED="$(printf '%q' "$APP_DIR")"
+          APP_DIR="$(
+            ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "
+              APP_DIR=$APP_DIR_ESCAPED
+              if [ ! -f \"\$APP_DIR/docker-compose.yml\" ] && [ -f \"\$APP_DIR/pickfolio/docker-compose.yml\" ]; then
+                APP_DIR=\"\$APP_DIR/pickfolio\"
+              fi
+              printf '%s' \"\$APP_DIR\"
+            "
+          )"
+          REMOTE_COMPOSE_ESCAPED="$(printf '%q' "${APP_DIR}/docker-compose.yml")"
+          scp -F "$HOME/.ssh/config" -P "$PORT" ./docker-compose.yml "${ORACLE_USER}@oracle-vm:${REMOTE_COMPOSE_ESCAPED}"
+
       - name: Rebuild and restart ai-agent-service
         env:
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
