@@ -68,13 +68,19 @@ jobs:
           ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
           ORACLE_APP_DIR: ${{ secrets.ORACLE_APP_DIR }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: openrouter/free
         run: |
           set -euo pipefail
           PORT="${ORACLE_PORT:-22}"
           APP_DIR="${ORACLE_APP_DIR:-/home/ubuntu/pickfolio}"
+          OPENROUTER_API_KEY_ESCAPED="$(printf '%q' "$OPENROUTER_API_KEY")"
+          OPENROUTER_MODEL_ESCAPED="$(printf '%q' "$OPENROUTER_MODEL")"
           ssh -F "$HOME/.ssh/config" -l "$ORACLE_USER" oracle-vm "
             set -e
             cd '${APP_DIR}'
+            export OPENROUTER_API_KEY=${OPENROUTER_API_KEY_ESCAPED}
+            export OPENROUTER_MODEL=${OPENROUTER_MODEL_ESCAPED}
             export COMPOSE_BAKE=false
             if docker compose version >/dev/null 2>&1; then
               COMPOSE='docker compose'
