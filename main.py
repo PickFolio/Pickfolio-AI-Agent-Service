@@ -188,6 +188,10 @@ class BotClient:
 
     def login(self) -> None:
         try:
+            # Clear any existing Authorization header before logging in
+            if "Authorization" in self.session.headers:
+                del self.session.headers["Authorization"]
+                
             res = self.session.post(
                 f"{AUTH_URL}/api/auth/login",
                 json={
